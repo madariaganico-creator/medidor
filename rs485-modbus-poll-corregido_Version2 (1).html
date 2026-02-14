@@ -1,56 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>RS485 Modbus Poll</title>
-    <script>
-        // Function to handle connection type change
-        function changeConnectionType() {
-            const connectionType = document.querySelector('input[name="connectionType"]:checked').value;
-            if (connectionType === 'TCP') {
-                document.getElementById('ipAddress').style.display = 'block';
-                document.getElementById('port').style.display = 'block';
-            } else {
-                document.getElementById('ipAddress').style.display = 'none';
-                document.getElementById('port').style.display = 'none';
-            }
-        }
-
-        // Function to establish serial connection
-        function connectSerial() {
-            // Your existing serial connection logic here
-        }
-
-        // Function to establish TCP connection
-        function connectTCP() {
-            const ipAddress = document.getElementById('ipAddress').value;
-            const port = document.getElementById('port').value;
-            // Your logic to connect via WebSocket for Modbus TCP
-        }
-
-        // Main connection function
-        function connect() {
-            const connectionType = document.querySelector('input[name="connectionType"]:checked').value;
-            if (connectionType === 'Serial') {
-                connectSerial();
-            } else {
-                connectTCP();
-            }
-        }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modbus Poll Interface</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>RS485 Modbus Poll</h1>
-    <label><input type="radio" name="connectionType" value="Serial" checked onchange="changeConnectionType()"> Serial</label>
-    <label><input type="radio" name="connectionType" value="TCP" onchange="changeConnectionType()"> TCP</label>
-    <br>
-    <div id="ipAddress" style="display:none;">
-        <label for="ip">IP Address:</label>
-        <input type="text" id="ip" name="ipAddress">
+    <div class="toolbar">
+        <h1>Modbus Poll Interface</h1>
+        <select id="connectionType">
+            <option value="serial">Serial</option>
+            <option value="tcp">TCP</option>
+        </select>
+        <input type="text" id="ipAddress" placeholder="IP Address">
+        <input type="number" id="port" placeholder="Port">
+        <button id="connectButton">Connect</button>
     </div>
-    <div id="port" style="display:none;">
-        <label for="port">Port:</label>
-        <input type="text" id="port" name="port">
+    <div class="status-bar">
+        <div id="status">Disconnected</div>
     </div>
-    <button onclick="connect()">Connect</button>
+    <div class="data-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Value (uint16)</th>
+                    <th>Value (int16)</th>
+                    <th>Value (float32)</th>
+                    <th>Value (uint32)</th>
+                    <th>Binary</th>
+                    <th>Voltage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data rows will be populated here dynamically -->
+            </tbody>
+        </table>
+    </div>
+    <div class="side-panel">
+        <h2>Statistics</h2>
+        <div class="logs">
+            <!-- Log information will be displayed here -->
+        </div>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
+
+<script>
+// Add functionality for Modbus RTU and TCP connections
+// Pseudo-code here for the connection logic
+
+function connect() {
+    const connectionType = document.getElementById('connectionType').value;
+    if (connectionType === 'serial') {
+        // Implement Serial connection logic
+    } else if (connectionType === 'tcp') {
+        const ip = document.getElementById('ipAddress').value;
+        const port = document.getElementById('port').value;
+        // Implement TCP connection logic using ip and port
+    }
+}
+
+document.getElementById('connectButton').addEventListener('click', connect);
+</script>

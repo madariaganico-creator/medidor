@@ -1,69 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modbus Poll</title>
-    <style>
-        /* Add any necessary CSS here */
-    </style>
-</head>
-<body>
-    <h1>Modbus Poll</h1>
-    <div>
-        <label for="connection-type">Select Connection Type:</label>
-        <select id="connection-type" onchange="toggleConnectionFields()">
-            <option value="serial">Serial</option>
-            <option value="tcp">TCP/IP</option>
-        </select>
-    </div>
-    <div id="tcp-fields" style="display:none;">
-        <label for="ip-address">IP Address:</label>
-        <input type="text" id="ip-address" placeholder="Enter IP Address">
-        <label for="port">Port:</label>
-        <input type="number" id="port" value="502">
-    </div>
-    <div>
-        <!-- Existing UI components remain unchanged -->
-    </div>
-
+    <title>RS485 Modbus Poll</title>
     <script>
-        function toggleConnectionFields() {
-            const connectionType = document.getElementById('connection-type').value;
-            const tcpFields = document.getElementById('tcp-fields');
-            tcpFields.style.display = connectionType === 'tcp' ? 'block' : 'none';
-        }
-
-        function sendModbusCommand(command) {
-            const connectionType = document.getElementById('connection-type').value;
-            if (connectionType === 'tcp') {
-                const ipAddress = document.getElementById('ip-address').value;
-                const port = document.getElementById('port').value;
-                // Implement TCP socket connection using WebSocket or fetch API
-                fetch(`http://${ipAddress}:${port}/modbus`, {
-                    method: 'POST',
-                    body: JSON.stringify(command),
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Handle successful response
-                    updateStatus('Connected to ' + ipAddress + ':' + port);
-                })
-                .catch(error => {
-                    // Handle errors
-                    updateStatus('Connection error: ' + error);
-                });
+        // Function to handle connection type change
+        function changeConnectionType() {
+            const connectionType = document.querySelector('input[name="connectionType"]:checked').value;
+            if (connectionType === 'TCP') {
+                document.getElementById('ipAddress').style.display = 'block';
+                document.getElementById('port').style.display = 'block';
             } else {
-                // Existing serial connection handling
-                // ... your serial connection code here
+                document.getElementById('ipAddress').style.display = 'none';
+                document.getElementById('port').style.display = 'none';
             }
         }
 
-        function updateStatus(message) {
-            // Update the UI to show the connection status
-            console.log(message);
+        // Function to establish serial connection
+        function connectSerial() {
+            // Your existing serial connection logic here
+        }
+
+        // Function to establish TCP connection
+        function connectTCP() {
+            const ipAddress = document.getElementById('ipAddress').value;
+            const port = document.getElementById('port').value;
+            // Your logic to connect via WebSocket for Modbus TCP
+        }
+
+        // Main connection function
+        function connect() {
+            const connectionType = document.querySelector('input[name="connectionType"]:checked').value;
+            if (connectionType === 'Serial') {
+                connectSerial();
+            } else {
+                connectTCP();
+            }
         }
     </script>
+</head>
+<body>
+    <h1>RS485 Modbus Poll</h1>
+    <label><input type="radio" name="connectionType" value="Serial" checked onchange="changeConnectionType()"> Serial</label>
+    <label><input type="radio" name="connectionType" value="TCP" onchange="changeConnectionType()"> TCP</label>
+    <br>
+    <div id="ipAddress" style="display:none;">
+        <label for="ip">IP Address:</label>
+        <input type="text" id="ip" name="ipAddress">
+    </div>
+    <div id="port" style="display:none;">
+        <label for="port">Port:</label>
+        <input type="text" id="port" name="port">
+    </div>
+    <button onclick="connect()">Connect</button>
 </body>
 </html>

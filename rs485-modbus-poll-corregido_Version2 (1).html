@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RS485 Modbus - Estilo Modbus Poll CORREGIDO</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2c3e50;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            background: #ecf0f1;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: linear-gradient(180deg, #ffffff 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #bbb;
+            padding: 8px 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            border-right: 1px solid #ccc;
+        }
+
+        .toolbar-group:last-child { border-right: none; }
+
+        .toolbar label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .toolbar select, .toolbar input {
+            padding: 4px 8px;
+            border: 1px solid #aaa;
+            border-radius: 3px;
+            font-size: 11px;
+            background: white;
+        }
+
+        .toolbar input[type="number"] {
+            width: 70px;
+        }
+
+        .toolbar button {
+            padding: 6px 15px;
+            border: 1px solid #999;
+            border-radius: 3px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e0e0e0 100%);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .toolbar button:hover:not(:disabled) {
+            background: linear-gradient(180deg, #fff 0%, #e8e8e8 100%);
+            border-color: #666;
+        }
+
+        .toolbar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toolbar button.connect { color: #27ae60; font-weight: bold; }
+        .toolbar button.disconnect { color: #c0392b; }
+        .toolbar button.read { color: #2980b9; }
+        .toolbar button.active { background: #3498db; color: white; border-color: #2980b9; }
+
+        .status-bar {
+            background: #34495e;
+            color: #ecf0f1;
+            padding: 6px 15px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #c0392b;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-led.connected {
+            background: #27ae60;
+            box-shadow: 0 0 10px #27ae60, inset 0 2px 4px rgba(0,0,0,0.2);
+            animation: pulse-led 2s infinite;
+        }
+
+        @keyframes pulse-led {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .content-area {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+
+        .main-panel {
+            flex: 1;
+            background: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            background: white;
+        }
+
+        .modbus-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .modbus-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .modbus-table th {
+            background: linear-gradient(180deg, #4a6fa5 0%, #3d5a80 100%);
+            color: white;
+            padding: 8px;
+            font-weight: 600;
+            text-align: left;
+            border: 1px solid #2c3e50;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .modbus-table td {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            background: white;
+        }
+
+        .modbus-table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .modbus-table tbody tr:hover {
+            background: #e3f2fd;
+        }
+
+        .modbus-table .addr-col {
+            font-weight: bold;
+            color: #2c3e50;
+            background: #ecf0f1;
+            text-align: center;
+        }
+
+        .modbus-table .hex-col {
+            font-family: 'Consolas', monospace;
+            color: #16a085;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .modbus-table .dec-col {
+            font-family: 'Consolas', monospace;
+            color: #2980b9;
+            text-align: right;
+            padding-right: 15px;
+        }
+
+        .modbus-table .bin-col {
+            font-family: 'Consolas', monospace;
+            color: #8e44ad;
+            font-size: 9px;
+        }
+
+        .modbus-table .float-col {
+            font-weight: 600;
+            color: #27ae60;
+            text-align: right;
+            padding-right: 15px;
+        }
+
+        .modbus-table .int-col {
+            color: #e67e22;
+            text-align: right;
+            padding-right: 15px;
+        }
+
+        .side-panel {
+            width: 350px;
+            background: #2c3e50;
+            border-left: 1px solid #34495e;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-panel {
+            flex: 1;
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Consolas', 'Courier New', monospace;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .log-panel .log-tx { color: #ff9800; }
+        .log-panel .log-rx { color: #00bcd4; }
+        .log-panel .log-error { color: #f44336; }
+        .log-panel .log-success { color: #4caf50; }
+        .log-panel .log-info { color: #2196f3; }
+        .log-panel .log-warning { color: #ffc107; }
+
+        .data-fresh {
+            animation: dataUpdate 0.5s;
+        }
+
+        @keyframes dataUpdate {
+            0% { background: #c8e6c9; }
+            100% { background: inherit; }
+        }
+
+        .control-panel {
+            background: #34495e;
+            padding: 15px;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .control-panel h3 {
+            color: #ecf0f1;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .interpretation-highlight {
+            background: #fff59d;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .debug-info {
+            background: #263238;
+            color: #aed581;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label>Puerto:</label>
+                <button onclick="connectSerial()" id="btnConnect" class="connect">🔌 Conectar</button>
+                <button onclick="disconnectSerial()" id="btnDisconnect" class="disconnect" disabled>Desconectar</button>
+            </div>
+
+            <div class="toolbar-group">
+                <label>Baud:</label>
+                <select id="baudRate">
+                    <option value="9600" selected>9600</option>
+                    <option value="19200">19200</option>
+                    <option value="38400">38400</option>
+                </select>
+                
+                <label>Paridad:</label>
+                <select id="parity">
+                    <option value="none" selected>None</option>
+                    <option value="even">Even</option>
+                    <option value="odd">Odd</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <label>Esclavo ID:</label>
+                <input type="number" id="slaveId" value="1" min="1" max="247">
+                
+                <label>Función:</label>
+                <select id="modbusFunction">
+                    <option value="3" selected>03 - Read Holding</option>
+                    <option value="4">04 - Read Input</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <label>Inicio:</label>
+                <input type="number" id="startAddress" value="24" min="0" max="65535">
+                
+                <label>Cantidad:</label>
+                <input type="number" id="quantity" value="10" min="1" max="125">
+            </div>
+
+            <div class="toolbar-group">
+                <button onclick="readRegisters()" id="btnRead" class="read" disabled>▶ Leer</button>
+                <button onclick="toggleContinuous()" id="btnContinuous" disabled>🔄 Continuo</button>
+                <button onclick="clearTable()">🗑️ Limpiar</button>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-led" id="statusLed"></div>
+                <span id="statusText">Desconectado</span>
+            </div>
+            <span id="statsText">Registros: 0 | TX: 0 | RX: 0 | Errores: 0</span>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Main Panel with Table -->
+            <div class="main-panel">
+                <div class="table-container">
+                    <table class="modbus-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Dirección</th>
+                                <th style="width: 100px;">Bytes HEX</th>
+                                <th style="width: 80px;">uint16</th>
+                                <th style="width: 80px;">int16</th>
+                                <th style="width: 120px;">float32</th>
+                                <th style="width: 120px;">uint32</th>
+                                <th style="width: 150px;">Binario</th>
+                                <th>Interpretación Voltaje</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">
+                                    <div style="font-size: 14px; margin-bottom: 10px;">⚡ Presiona "▶ Leer" para obtener datos del medidor</div>
+                                    <div style="font-size: 11px;">Dirección inicial sugerida: 24 (0x0018) para Voltaje A</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="side-panel">
+                <div class="control-panel">
+                    <h3>⚙️ Control de Lectura</h3>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; color: #bdc3c7; font-size: 10px; margin-bottom: 3px;">Intervalo Continuo (ms)</label>
+                        <input type="number" id="continuousInterval" value="1000" min="100" max="10000" step="100" 
+                               style="width: 100%; padding: 5px; font-size: 11px;">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button onclick="exportCSV()" style="padding: 8px;">💾 CSV</button>
+                        <button onclick="clearLog()" style="padding: 8px;">🗑️ Log</button>
+                    </div>
+
+                    <hr style="border-color: #2c3e50; margin: 15px 0;">
+
+                    <h3>📊 Estadísticas</h3>
+                    <div style="color: #ecf0f1; font-size: 11px; line-height: 1.8;">
+                        <div>Total Registros: <strong id="statRegisters">0</strong></div>
+                        <div>Comandos TX: <strong id="statTX">0</strong></div>
+                        <div>Respuestas RX: <strong id="statRX">0</strong></div>
+                        <div>CRC Válidos: <strong id="statCRCOK">0</strong></div>
+                        <div>Errores: <strong id="statErrors">0</strong></div>
+                        <div>Última Lectura: <strong id="statLastRead">---</strong></div>
+                    </div>
+                </div>
+
+                <div class="log-panel" id="logPanel">
+                    <div class="log-info">═══ Sistema Modbus RTU ═══</div>
+                    <div class="log-info">Esperando conexión...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let isConnected = false;
+        let isContinuous = false;
+        let continuousInterval = null;
+        let readBuffer = [];
+        let waitingForResponse = false;
+
+        // Estadísticas
+        let stats = { tx: 0, rx: 0, crcOK: 0, errors: 0, registers: 0 };
+
+        // Datos leídos
+        let registerData = [];
+
+        async function connectSerial() {
+            try {
+                port = await navigator.serial.requestPort();
+                
+                const baudRate = parseInt(document.getElementById('baudRate').value);
+                const parity = document.getElementById('parity').value;
+
+                await port.open({
+                    baudRate: baudRate,
+                    dataBits: 8,
+                    parity: parity,
+                    stopBits: 1,
+                    bufferSize: 4096
+                });
+
+                isConnected = true;
+                updateUIState();
+                log('✓ CONECTADO', 'log-success');
+                log(`Config: ${baudRate} bps, 8${parity.charAt(0).toUpperCase()}1`, 'log-info');
+                
+                startReading();
+            } catch (error) {
+                log(`✗ Error: ${error.message}`, 'log-error');
+            }
+        }
+
+        async function startReading() {
+            try {
+                reader = port.readable.getReader();
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    if (value) {
+                        readBuffer.push(...value);
+                        const hex = Array.from(value).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                        log(`◄ RX: ${hex}`, 'log-rx');
+                        
+                        if (waitingForResponse) {
+                            waitingForResponse = false;
+                        }
+                    }
+                }
+            } catch (error) {
+                if (isConnected) log(`✗ Error: ${error.message}`, 'log-error');
+            }
+        }
+
+        async function sendModbusCommand(slaveId, functionCode, address, quantity) {
+            return new Promise(async (resolve) => {
+                try {
+                    readBuffer = [];
+                    
+                    const command = new Uint8Array(8);
+                    command[0] = slaveId;
+                    command[1] = functionCode;
+                    command[2] = (address >> 8) & 0xFF;
+                    command[3] = address & 0xFF;
+                    command[4] = (quantity >> 8) & 0xFF;
+                    command[5] = quantity & 0xFF;
+                    
+                    const crc = calculateCRC(command.slice(0, 6));
+                    command[6] = crc & 0xFF;
+                    command[7] = (crc >> 8) & 0xFF;
+
+                    writer = port.writable.getWriter();
+                    await writer.write(command);
+                    writer.releaseLock();
+
+                    stats.tx++;
+                    const hex = Array.from(command).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                    log(`► TX: ${hex}`, 'log-tx');
+                    log(`   SlaveID=${slaveId}, Func=0x${functionCode.toString(16).padStart(2,'0')}, Addr=${address} (0x${address.toString(16).padStart(4,'0')}), Qty=${quantity}`, 'log-info');
+
+                    waitingForResponse = true;
+                    
+                    // Esperar respuesta
+                    const startTime = Date.now();
+                    while (waitingForResponse && (Date.now() - startTime) < 1000) {
+                        await sleep(50);
+                        
+                        if (readBuffer.length >= 5) {
+                            // Verificar si es una respuesta completa
+                            const expectedLength = readBuffer.length >= 3 ? (3 + readBuffer[2] + 2) : 0;
+                            
+                            if (readBuffer.length >= expectedLength && expectedLength > 0) {
+                                waitingForResponse = false;
+                                const response = [...readBuffer];
+                                readBuffer = [];
+                                
+                                log(`   Respuesta recibida: ${response.length} bytes`, 'log-info');
+                                resolve(response);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Timeout
+                    waitingForResponse = false;
+                    log(`   ✗ TIMEOUT - No se recibió respuesta completa`, 'log-error');
+                    stats.errors++;
+                    resolve(null);
+                    
+                } catch (error) {
+                    log(`✗ Error al enviar: ${error.message}`, 'log-error');
+                    stats.errors++;
+                    resolve(null);
+                }
+            });
+        }
+
+        function calculateCRC(buffer) {
+            let crc = 0xFFFF;
+            for (let i = 0; i < buffer.length; i++) {
+                crc ^= buffer[i];
+                for (let j = 0; j < 8; j++) {
+                    crc = (crc & 0x0001) ? (crc >> 1) ^ 0xA001 : crc >> 1;
+                }
+            }
+            return crc;
+        }
+
+        function verifyCRC(data) {
+            if (data.length < 5) return false;
+            const receivedCRC = data[data.length - 2] | (data[data.length - 1] << 8);
+            const calculatedCRC = calculateCRC(new Uint8Array(data.slice(0, -2)));
+            const valid = receivedCRC === calculatedCRC;
+            
+            log(`   CRC: Recibido=0x${receivedCRC.toString(16).padStart(4,'0')}, Calculado=0x${calculatedCRC.toString(16).padStart(4,'0')} ${valid ? '✓' : '✗'}`, valid ? 'log-success' : 'log-error');
+            
+            return valid;
+        }
+
+        async function readRegisters() {
+            if (!isConnected) return;
+
+            const slaveId = parseInt(document.getElementById('slaveId').value);
+            const functionCode = parseInt(document.getElementById('modbusFunction').value);
+            const startAddr = parseInt(document.getElementById('startAddress').value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            log(`═══════════════════════════���════════════`, '');
+            log(`🔍 INICIANDO LECTURA`, 'log-info');
+            log(`   Dirección inicio: ${startAddr} (0x${startAddr.toString(16).padStart(4,'0')})`, 'log-info');
+            log(`   Cantidad: ${quantity} registros (${quantity * 2} bytes)`, 'log-info');
+
+            const response = await sendModbusCommand(slaveId, functionCode, startAddr, quantity);
+
+            if (response && verifyCRC(response)) {
+                stats.rx++;
+                stats.crcOK++;
+                
+                const slaveIdRx = response[0];
+                const funcCodeRx = response[1];
+                const byteCount = response[2];
+                const dataBytes = response.slice(3, 3 + byteCount);
+                
+                log(`   ✓ RESPUESTA VÁLIDA`, 'log-success');
+                log(`   SlaveID=${slaveIdRx}, FuncCode=${funcCodeRx}, ByteCount=${byteCount}`, 'log-success');
+                log(`   Datos (HEX): ${Array.from(dataBytes).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(' ')}`, 'log-success');
+                
+                // Procesar datos
+                registerData = [];
+                for (let i = 0; i < dataBytes.length; i += 2) {
+                    if (i + 1 < dataBytes.length) {
+                        registerData.push({
+                            address: startAddr + (i / 2),
+                            byte1: dataBytes[i],
+                            byte2: dataBytes[i + 1]
+                        });
+                    }
+                }
+                
+                stats.registers = registerData.length;
+                log(`   ✓ ${registerData.length} registros procesados`, 'log-success');
+                
+                updateTable();
+                updateStats();
+            } else if (response) {
+                stats.errors++;
+                log(`   ✗ RESPUESTA INVÁLIDA - CRC no coincide`, 'log-error');
+                updateStats();
+            } else {
+                stats.errors++;
+                log(`   ✗ SIN RESPUESTA - Timeout`, 'log-error');
+                log(`   Verifica: conexión, dirección esclavo, velocidad, paridad`, 'log-warning');
+                updateStats();
+            }
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            if (registerData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #e74c3c;">
+                            <div style="font-size: 14px; margin-bottom: 10px;">⚠️ No se recibieron datos</div>
+                            <div style="font-size: 11px;">Verifica la conexión y configuración Modbus</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            registerData.forEach((reg, index) => {
+                const row = document.createElement('tr');
+                row.className = 'data-fresh';
+                
+                // Dirección
+                const addrCell = document.createElement('td');
+                addrCell.className = 'addr-col';
+                addrCell.innerHTML = `<strong>0x${reg.address.toString(16).padStart(4, '0').toUpperCase()}</strong><br><small>(${reg.address})</small>`;
+                row.appendChild(addrCell);
+
+                // HEX Bytes
+                const hexCell = document.createElement('td');
+                hexCell.className = 'hex-col';
+                hexCell.innerHTML = `${reg.byte1.toString(16).padStart(2, '0').toUpperCase()} ${reg.byte2.toString(16).padStart(2, '0').toUpperCase()}`;
+                row.appendChild(hexCell);
+
+                // uint16 (Big-Endian)
+                const uint16 = (reg.byte1 << 8) | reg.byte2;
+                const uint16Cell = document.createElement('td');
+                uint16Cell.className = 'dec-col';
+                uint16Cell.textContent = uint16;
+                row.appendChild(uint16Cell);
+
+                // int16
+                const int16 = uint16 > 32767 ? uint16 - 65536 : uint16;
+                const int16Cell = document.createElement('td');
+                int16Cell.className = 'int-col';
+                int16Cell.textContent = int16;
+                row.appendChild(int16Cell);
+
+                // float32 (necesita siguiente registro)
+                const float32Cell = document.createElement('td');
+                float32Cell.className = 'float-col';
+                if (index + 1 < registerData.length) {
+                    const nextReg = registerData[index + 1];
+                    const buffer = new ArrayBuffer(4);
+                    const view = new DataView(buffer);
+                    view.setUint16(0, (reg.byte1 << 8) | reg.byte2, false);
+                    view.setUint16(2, (nextReg.byte1 << 8) | nextReg.byte2, false);
+                    const float32 = view.getFloat32(0, false);
+                    float32Cell.textContent = float32.toFixed(4);
+                } else {
+                    float32Cell.textContent = '---';
+                }
+                row.appendChild(float32Cell);
+
+                // uint32 (necesita siguiente registro)
+                const uint32Cell = document.createElement('td');
+                uint32Cell.className = 'dec-col';
+                if (index + 1 < registerData.length) {
+                    const nextReg = registerData[index + 1];
+                    const uint32 = ((reg.byte1 << 24) | (reg.byte2 << 16) | (nextReg.byte1 << 8) | nextReg.byte2) >>> 0;
+                    uint32Cell.textContent = uint32;
+                } else {
+                    uint32Cell.textContent = '---';
+                }
+                row.appendChild(uint32Cell);
+
+                // Binario
+                const binCell = document.createElement('td');
+                binCell.className = 'bin-col';
+                binCell.textContent = `${reg.byte1.toString(2).padStart(8, '0')} ${reg.byte2.toString(2).padStart(8, '0')}`;
+                row.appendChild(binCell);
+
+                // Interpretación como voltaje
+                const interpCell = document.createElement('td');
+                interpCell.style.fontSize = '11px';
+                let interpretations = [];
+                
+                // uint16 / 10
+                const v1 = (uint16 / 10).toFixed(2);
+                if (parseFloat(v1) > 100 && parseFloat(v1) < 300) {
+                    interpretations.push(`<span class="interpretation-highlight">${v1}V (÷10)</span>`);
+                } else {
+                    interpretations.push(`${v1}V (÷10)`);
+                }
+
+                // uint16 / 100
+                const v2 = (uint16 / 100).toFixed(3);
+                interpretations.push(`${v2}V (÷100)`);
+
+                // float32 × 2 (si existe)
+                if (index + 1 < registerData.length) {
+                    const nextReg = registerData[index + 1];
+                    const buffer = new ArrayBuffer(4);
+                    const view = new DataView(buffer);
+                    view.setUint16(0, (reg.byte1 << 8) | reg.byte2, false);
+                    view.setUint16(2, (nextReg.byte1 << 8) | nextReg.byte2, false);
+                    const float32 = view.getFloat32(0, false);
+                    
+                    const v3 = (float32 * 2).toFixed(2);
+                    if (parseFloat(v3) > 100 && parseFloat(v3) < 300) {
+                        interpretations.push(`<span class="interpretation-highlight">${v3}V (float×2)</span>`);
+                    } else {
+                        interpretations.push(`${v3}V (float×2)`);
+                    }
+
+                    const v4 = float32.toFixed(2);
+                    interpretations.push(`${v4}V (float)`);
+                }
+
+                interpCell.innerHTML = interpretations.join('<br>');
+                row.appendChild(interpCell);
+
+                tbody.appendChild(row);
+            });
+
+            log(`✓ Tabla actualizada con ${registerData.length} registros`, 'log-success');
+        }
+
+        function updateStats() {
+            document.getElementById('statRegisters').textContent = stats.registers;
+            document.getElementById('statTX').textContent = stats.tx;
+            document.getElementById('statRX').textContent = stats.rx;
+            document.getElementById('statCRCOK').textContent = stats.crcOK;
+            document.getElementById('statErrors').textContent = stats.errors;
+            document.getElementById('statLastRead').textContent = new Date().toLocaleTimeString();
+            
+            document.getElementById('statsText').textContent = 
+                `Registros: ${stats.registers} | TX: ${stats.tx} | RX: ${stats.rx} | Errores: ${stats.errors}`;
+        }
+
+        function toggleContinuous() {
+            isContinuous = !isContinuous;
+            
+            if (isContinuous) {
+                const interval = parseInt(document.getElementById('continuousInterval').value);
+                document.getElementById('btnContinuous').classList.add('active');
+                document.getElementById('btnContinuous').textContent = '⏹ Detener';
+                log(`🔄 Modo continuo activado (${interval}ms)`, 'log-info');
+                
+                readRegisters();
+                continuousInterval = setInterval(readRegisters, interval);
+            } else {
+                document.getElementById('btnContinuous').classList.remove('active');
+                document.getElementById('btnContinuous').textContent = '🔄 Continuo';
+                clearInterval(continuousInterval);
+                log('⏹ Modo continuo detenido', 'log-info');
+            }
+        }
+
+        function clearTable() {
+            registerData = [];
+            document.getElementById('dataTableBody').innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #95a5a6;">
+                        Tabla limpiada - Presiona "▶ Leer" para obtener nuevos datos
+                    </td>
+                </tr>
+            `;
+            log('🗑️ Tabla limpiada', 'log-info');
+        }
+
+        function clearLog() {
+            document.getElementById('logPanel').innerHTML = `
+                <div class="log-info">═══ Sistema Modbus RTU ═══</div>
+                <div class="log-info">Log limpiado</div>
+            `;
+        }
+
+        function exportCSV() {
+            if (registerData.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            let csv = 'Address (Hex),Address (Dec),Byte1,Byte2,uint16,int16,float32,uint32\n';
+            
+            registerData.forEach((reg, index) => {
+                const uint16 = (reg.byte1 << 8) | reg.byte2;
+                const int16 = uint16 > 32767 ? uint16 - 65536 : uint16;
+                
+                let float32 = '';
+                let uint32 = '';
+                
+                if (index + 1 < registerData.length) {
+                    const nextReg = registerData[index + 1];
+                    const buffer = new ArrayBuffer(4);
+                    const view = new DataView(buffer);
+                    view.setUint16(0, (reg.byte1 << 8) | reg.byte2, false);
+                    view.setUint16(2, (nextReg.byte1 << 8) | nextReg.byte2, false);
+                    float32 = view.getFloat32(0, false).toFixed(4);
+                    uint32 = ((reg.byte1 << 24) | (reg.byte2 << 16) | (nextReg.byte1 << 8) | nextReg.byte2) >>> 0;
+                }
+                
+                csv += `0x${reg.address.toString(16).padStart(4, '0')},${reg.address},`;
+                csv += `${reg.byte1},${reg.byte2},${uint16},${int16},${float32},${uint32}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `modbus_data_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            log('💾 Datos exportados a CSV', 'log-success');
+        }
+
+        async function disconnectSerial() {
+            if (isContinuous) toggleContinuous();
+            isConnected = false;
+            if (reader) {
+                await reader.cancel();
+                reader = null;
+            }
+            if (port) {
+                await port.close();
+                port = null;
+            }
+            updateUIState();
+            log('Desconectado', 'log-info');
+        }
+
+        function updateUIState() {
+            document.getElementById('btnConnect').disabled = isConnected;
+            document.getElementById('btnDisconnect').disabled = !isConnected;
+            document.getElementById('btnRead').disabled = !isConnected;
+            document.getElementById('btnContinuous').disabled = !isConnected;
+            
+            const led = document.getElementById('statusLed');
+            const statusText = document.getElementById('statusText');
+            
+            if (isConnected) {
+                led.classList.add('connected');
+                statusText.textContent = 'Conectado - Listo';
+            } else {
+                led.classList.remove('connected');
+                statusText.textContent = 'Desconectado';
+            }
+        }
+
+        function log(message, className = '') {
+            const logPanel = document.getElementById('logPanel');
+            const line = document.createElement('div');
+            line.className = className;
+            const timestamp = new Date().toLocaleTimeString() + '.' + new Date().getMilliseconds().toString().padStart(3, '0');
+            line.textContent = message ? `[${timestamp}] ${message}` : '';
+            logPanel.appendChild(line);
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        window.addEventListener('load', () => {
+            log('═══ Modbus RTU Reader ═══', 'log-info');
+            log('✓ Sistema iniciado', 'log-success');
+            log('📌 Conecta tu conversor RS485', 'log-info');
+            log('💡 Dirección 24 (0x0018) es típica para Voltaje A', 'log-warning');
+        });
+
+        if (!('serial' in navigator)) {
+            alert('⚠️ Web Serial API no soportado en este navegador');
+        }
+    </script>
+</body>
+</html>

@@ -193,6 +193,12 @@
     </div>
 
 <script>
+// Constants
+const POLLING_INTERVAL_MS = 2000;
+const MAX_LOG_ENTRIES = 50;
+const VOLTAGE_RANGE = 380;
+const VOLTAGE_MIN = 20;
+
 // Global connection state
 let isConnected = false;
 let pollingInterval = null;
@@ -203,12 +209,12 @@ function initializeSampleData() {
     for (let i = 0; i < 10; i++) {
         sampleData.push({
             address: 40001 + i,
-            uint16: Math.floor(Math.random() * 65536),
-            int16: Math.floor(Math.random() * 65536) - 32768,
-            float32: (Math.random() * 1000).toFixed(2),
-            uint32: Math.floor(Math.random() * 4294967296),
-            binary: '0b' + Math.floor(Math.random() * 65536).toString(2).padStart(16, '0'),
-            voltage: (Math.random() * 380 + 20).toFixed(2)
+            uint16Value: Math.floor(Math.random() * 65536),
+            int16Value: Math.floor(Math.random() * 65536) - 32768,
+            float32Value: (Math.random() * 1000).toFixed(2),
+            uint32Value: Math.floor(Math.random() * 4294967296),
+            binaryValue: '0b' + Math.floor(Math.random() * 65536).toString(2).padStart(16, '0'),
+            voltageValue: (Math.random() * VOLTAGE_RANGE + VOLTAGE_MIN).toFixed(2)
         });
     }
     updateDataTable();
@@ -309,7 +315,7 @@ function startPolling() {
     pollingInterval = setInterval(() => {
         updateSampleData();
         updateDataTable();
-    }, 2000);
+    }, POLLING_INTERVAL_MS);
 }
 
 // Stop polling data
@@ -324,12 +330,12 @@ function stopPolling() {
 // Update sample data (simulate real data changes)
 function updateSampleData() {
     sampleData.forEach(item => {
-        item.uint16 = Math.floor(Math.random() * 65536);
-        item.int16 = Math.floor(Math.random() * 65536) - 32768;
-        item.float32 = (Math.random() * 1000).toFixed(2);
-        item.uint32 = Math.floor(Math.random() * 4294967296);
-        item.binary = '0b' + item.uint16.toString(2).padStart(16, '0');
-        item.voltage = (Math.random() * 380 + 20).toFixed(2);
+        item.uint16Value = Math.floor(Math.random() * 65536);
+        item.int16Value = Math.floor(Math.random() * 65536) - 32768;
+        item.float32Value = (Math.random() * 1000).toFixed(2);
+        item.uint32Value = Math.floor(Math.random() * 4294967296);
+        item.binaryValue = '0b' + item.uint16Value.toString(2).padStart(16, '0');
+        item.voltageValue = (Math.random() * VOLTAGE_RANGE + VOLTAGE_MIN).toFixed(2);
     });
 }
 
@@ -342,12 +348,12 @@ function updateDataTable() {
         const row = tbody.insertRow();
         row.innerHTML = `
             <td>${item.address}</td>
-            <td>${item.uint16}</td>
-            <td>${item.int16}</td>
-            <td>${item.float32}</td>
-            <td>${item.uint32}</td>
-            <td>${item.binary}</td>
-            <td>${item.voltage}V</td>
+            <td>${item.uint16Value}</td>
+            <td>${item.int16Value}</td>
+            <td>${item.float32Value}</td>
+            <td>${item.uint32Value}</td>
+            <td>${item.binaryValue}</td>
+            <td>${item.voltageValue}V</td>
         `;
     });
 }
@@ -364,8 +370,8 @@ function addLog(message, type = 'info') {
     // Auto-scroll to bottom
     logs.scrollTop = logs.scrollHeight;
     
-    // Keep only last 50 log entries
-    while (logs.children.length > 50) {
+    // Keep only last entries based on MAX_LOG_ENTRIES constant
+    while (logs.children.length > MAX_LOG_ENTRIES) {
         logs.removeChild(logs.firstChild);
     }
 }
